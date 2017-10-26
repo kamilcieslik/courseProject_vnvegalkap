@@ -13,6 +13,6 @@ set(SOURCE_FILES
         TimeMeasurement.h
         TravellingSalesmanProblem.cpp
         TravellingSalesmanProblem.h
-        )
+        TSPLIB_Parser.cpp TSPLIB_Parser.h)
 
 add_executable(courseProject_sdz3 ${SOURCE_FILES})
