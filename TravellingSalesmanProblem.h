@@ -10,11 +10,13 @@
 class TravellingSalesmanProblem {
 private:
     int amountOfCities;
-    int **arrayOfMatrixOfCities;
+    long long int **arrayOfMatrixOfCities;
     int *optimalWay_Solution;
-    int *allPossiblePermutations;
     int length;
     bool setGreedyAlgorithm;
+    std::string fileName;
+    std::string graphType;
+
 public:
     TravellingSalesmanProblem();
 
@@ -22,7 +24,8 @@ public:
 
     void DeleteTravellingSalesman();
 
-    void ReadCitiesFromFile(std::string path);
+    void LoadArrayOfMatrixOfCities(long long int **_cities, int _amountOfCities, std::string _fileName,
+                                   std::string _graphType);
 
     void GenerateRandomCities(int amountOfCities = 0, int maxDistanceBetweenCity = 99);
 

@@ -9,20 +9,26 @@
 #include <fstream>
 #include "TSPLIB_Parser.h"
 
-
-TSPLIB_Parser::TSPLIB_Parser(std::ifstream &inputFile) {
-    if (readProblem(inputFile)) {
-        // printSolution();
-    }
+TSPLIB_Parser::TSPLIB_Parser(std::string path) : arrayOfMatrixCities(nullptr) {
+    std::ifstream file(path, std::ios::in);
+    if (file.is_open()) {
+        if (readProblem(file)) {
+        }
+        else
+        {
+            throw std::invalid_argument("Błąd odczytu pliku.");
+        }
+    } else
+        throw std::logic_error("Błąd odczytu pliku.");
 }
 
 TSPLIB_Parser::~TSPLIB_Parser() {
-    if(cities!=nullptr){
+    if (arrayOfMatrixCities != nullptr) {
         for (int i = 0; i < dimension; i++)
-            delete[] cities[i];
-        delete[] cities;
+            delete[] arrayOfMatrixCities[i];
+        delete[] arrayOfMatrixCities;
     }
-    cities=nullptr;
+    arrayOfMatrixCities = nullptr;
 }
 
 bool TSPLIB_Parser::readProblem(std::ifstream &inputFile) {
@@ -49,7 +55,6 @@ bool TSPLIB_Parser::readProblem(std::ifstream &inputFile) {
                 this->numbers.push_back((long long int &&) n);
             }
         }
-
         if (isCoordinatesType) {
             std::stringstream stream(line);
             int n;
@@ -67,24 +72,22 @@ bool TSPLIB_Parser::readProblem(std::ifstream &inputFile) {
         }
     }
 
-    fillMatrix();
-
-
+    GenerateMatrix();
     return true;
 }
 
 bool TSPLIB_Parser::checkParameter(std::string keyword, std::string value) {
     if (keyword == "NAME") {
-        this->name = value;
+        this->fileName = value;
     } else if (keyword == "TYPE") {
         if ((value == "TSP") || (value == "ATSP")) {
             this->type = value;
         } else {
-            std::cout << "Parametr - " << keyword << " niewspierany." << std::endl;
+            std::cout << "Parametr - " << keyword << " - " << value << " jest niewspierany." << std::endl;
             return 0;
         }
-    } else if (keyword == "COMMENT")
-        this->comment = value;
+    } else if (keyword == "COMMENT") {}
+        //this->comment = value;
     else if (keyword == "DIMENSION")
         this->dimension = stoi(value);
     else if (keyword == "EDGE_WEIGHT_TYPE") {
@@ -95,7 +98,7 @@ bool TSPLIB_Parser::checkParameter(std::string keyword, std::string value) {
         else if (value == "ATT")
             this->edgeWeightFormat = value;
         else {
-            std::cout << "Parametr - " << keyword << " niewspierany." << std::endl;
+            std::cout << "Parametr " << keyword << " - " << value << " jest niewspierany." << std::endl;
             return 0;
         }
     } else if (keyword == "EDGE_WEIGHT_FORMAT") {
@@ -110,13 +113,13 @@ bool TSPLIB_Parser::checkParameter(std::string keyword, std::string value) {
             (value == "LOWER_DIAG_COL"))
             this->edgeWeightFormat = value;
         else {
-            std::cout << "Parametr - " << keyword << " niewspierany." << std::endl;
+            std::cout << "Parametr " << keyword << " - " << value << " jest niewspierany." << std::endl;
             return 0;
         }
     } else if (keyword == "DISPLAY_DATA_TYPE") {
 
     } else {
-        std::cout << "Nieznany parametr - " << keyword << "." << std::endl;
+        std::cout << "Nieznany parametr " << keyword << "." << std::endl;
         return false;
     }
     return true;
@@ -132,165 +135,183 @@ void TSPLIB_Parser::printSolution() {
     time_t now = time(0);
     tm *localtm = localtime(&now);
 
-    std::cout << "NAME : " << this->name << "." << this->optimalTour.size() << ".tour" << std::endl;
+    std::cout << "NAME : " << this->fileName << "." << this->optimalTour.size() << ".tour" << std::endl;
     std::cout << "COMMENT : Lenght = " << this->cost << ". Found by John D.C. Little " << asctime(localtm);
     std::cout << "TYPE : TOUR" << std::endl;
     std::cout << "DIMENSION : " << this->optimalTour.size() << std::endl;
     std::cout << "TOUR_SECTION" << std::endl;
 
-    for (long long int & i : this->optimalTour) {
+    for (long long int &i : this->optimalTour) {
         std::cout << i << " ";
     }
     std::cout << "-1" << std::endl;
 }
 
-void TSPLIB_Parser::writeSolution(std::ofstream &outputFile) {
+void TSPLIB_Parser::WriteSolution(std::ofstream &outputFile) {
     time_t now = time(0);
-    tm *localtm = localtime(&now);
+    auto pTm = localtime(&now);
 
-    outputFile << "NAME : " << this->name << "." << this->optimalTour.size() << ".tour" << std::endl;
-    outputFile << "COMMENT : Lenght = " << this->cost << ". Found by John D.C. Little " << asctime(localtm);
+    outputFile << "NAME : " << this->fileName << "." << this->optimalTour.size() << ".tour" << std::endl;
+    outputFile << "COMMENT : Lenght = " << this->cost << ". Found by John D.C. Little " << asctime(pTm);
     outputFile << "TYPE : TOUR" << std::endl;
     outputFile << "DIMENSION : " << this->optimalTour.size() << std::endl;
     outputFile << "TOUR_SECTION" << std::endl;
 
-    for (long long int & i : this->optimalTour) {
+    for (long long int &i : this->optimalTour) {
         outputFile << i << std::endl;
     }
     outputFile << "-1" << std::endl;
     outputFile << "EOF";
 }
 
-bool TSPLIB_Parser::fillMatrix() {
-    if (cities != nullptr) {
+bool TSPLIB_Parser::GenerateMatrix() {
+    if (arrayOfMatrixCities != nullptr) {
         for (int i = 0; i < dimension; i++)
-            delete[] cities[i];
-        delete[] cities;
+            delete[] arrayOfMatrixCities[i];
+        delete[] arrayOfMatrixCities;
     }
-    cities = new long long int *[dimension];
+    arrayOfMatrixCities = new long long int *[dimension];
     for (int i = 0; i < dimension; i++)
-        cities[i] = new long long int[dimension];
+        arrayOfMatrixCities[i] = new long long int[dimension];
 
     if (edgeWeightType == "EUC_2D")
-        euclidesMatrix();
+        EuclidesMatrix();
 
-    if (edgeWeightFormat=="ATT")
-        pseudoEuclidesMatrix();
+    if (edgeWeightFormat == "ATT")
+        PseudoEuclidesMatrix();
 
     if (edgeWeightFormat == "FULL_MATRIX")
-        fullMatrix();
+        FullMatrix();
 
     if ((edgeWeightFormat == "UPPER_ROW") || (edgeWeightFormat == "LOWER_COL"))
-        upperRow();
+        UpperRowMatrix();
 
     if ((edgeWeightFormat == "LOWER_ROW") || (edgeWeightFormat == "UPPER_COL"))
-        lowerRow();
+        LowerRowMatrix();
 
     if ((edgeWeightFormat == "UPPER_DIAG_ROW") || (edgeWeightFormat == "LOWER_DIAG_COL"))
-        upperDiagRow();
+        UpperDiagRowMatrix();
 
     if ((edgeWeightFormat == "LOWER_DIAG_ROW") || (edgeWeightFormat == "UPPER_DIAG_COL"))
-        lowerDiagRow();
-
+        LowerDiagRowMatrix();
 
     return true;
 }
 
-void TSPLIB_Parser::fullMatrix() {
+void TSPLIB_Parser::FullMatrix() {
     for (int i = 0; i < this->dimension; i++) {
         for (int j = 0; j < this->dimension; j++) {
             if (i != j) {
-                cities[i][j] = this->numbers[i * this->dimension + j];
+                arrayOfMatrixCities[i][j] = this->numbers[i * this->dimension + j];
             }
         }
     }
 }
 
-void TSPLIB_Parser::upperRow() {
+void TSPLIB_Parser::UpperRowMatrix() {
     int counter = 0;
     for (int i = 0; i < this->dimension - 1; i++) {
         for (int j = i + 1; j < this->dimension; j++) {
-            cities[i][j] = this->numbers[counter];
-            cities[j][i] = this->numbers[counter];
+            arrayOfMatrixCities[i][j] = this->numbers[counter];
+            arrayOfMatrixCities[j][i] = this->numbers[counter];
             counter++;
         }
     }
 }
 
-void TSPLIB_Parser::lowerRow() {
+void TSPLIB_Parser::LowerRowMatrix() {
     int counter = 0;
     for (int i = 1; i < this->dimension; i++) {
         for (int j = 0; j < i; j++) {
-            cities[i][j] = this->numbers[counter];
-            cities[j][i] = this->numbers[counter];
+            arrayOfMatrixCities[i][j] = this->numbers[counter];
+            arrayOfMatrixCities[j][i] = this->numbers[counter];
             counter++;
         }
     }
 }
 
-void TSPLIB_Parser::upperDiagRow() {
+void TSPLIB_Parser::UpperDiagRowMatrix() {
     int counter = 0;
     for (int i = 0; i < this->dimension; i++) {
         for (int j = i; j < this->dimension; j++) {
             if (i != j) {
-                cities[i][j] = this->numbers[counter];
-                cities[j][i] = this->numbers[counter];
+                arrayOfMatrixCities[i][j] = this->numbers[counter];
+                arrayOfMatrixCities[j][i] = this->numbers[counter];
             }
             counter++;
         }
     }
 }
 
-void TSPLIB_Parser::lowerDiagRow() {
+void TSPLIB_Parser::LowerDiagRowMatrix() {
     int counter = 0;
     for (int i = 0; i < this->dimension; i++) {
         for (int j = 0; j < i + 1; j++) {
             if (j != i) {
-                cities[i][j] = this->numbers[counter];
-                cities[j][i] = this->numbers[counter];
+                arrayOfMatrixCities[i][j] = this->numbers[counter];
+                arrayOfMatrixCities[j][i] = this->numbers[counter];
             }
             counter++;
         }
     }
 }
 
-void TSPLIB_Parser::euclidesMatrix() {
-    int counter=0;
-    int counter2=0;
-    for (int i = 0; i < (2*dimension); i=i+2) {
-        for (int j = 0; j <(2*dimension) ; j=j+2) {
+void TSPLIB_Parser::EuclidesMatrix() {
+    int i = 0;
+    int j = 0;
+    for (int k = 0; k < (2 * dimension); k = k + 2) {
+        for (int l = 0; l < (2 * dimension); l = l + 2) {
 
-            cities[counter][counter2] =  (long long int)round(sqrt( (numbers[i]-numbers[j])*(numbers[i]-numbers[j]) + (numbers[i+1]-numbers[j+1])*(numbers[i+1]-numbers[j+1]) ));
-            counter2++;
+            arrayOfMatrixCities[i][j] = (long long int) round(
+                    sqrt((numbers[k] - numbers[l]) * (numbers[k] - numbers[l]) +
+                         (numbers[k + 1] - numbers[l + 1]) * (numbers[k + 1] - numbers[l + 1])));
+            j++;
         }
-        std::cout<<"kurwa"<<std::endl;
-        counter2=0;
-        counter ++;
+        std::cout << "kurwa" << std::endl;
+        j = 0;
+        i++;
     }
-    std::cout<<std::endl;
-    std::cout<<counter;
-    std::cout<<"wyszlo git";
+    std::cout << std::endl;
+    std::cout << i;
+    std::cout << "wyszlo git";
 }
 
-void TSPLIB_Parser::pseudoEuclidesMatrix()
-{
-    double rij;
-    long long int tij;
-    int counter=0;
-    int counter2=0;
-    for (int i = 0; i < (2*dimension); i=i+2) {
-        for (int j = 0; j <(2*dimension) ; j=j+2) {
+void TSPLIB_Parser::PseudoEuclidesMatrix() {
+    double rkl;
+    long long int tkl;
+    int i = 0;
+    int j = 0;
+    for (int k = 0; k < (2 * dimension); k = k + 2) {
+        for (int l = 0; l < (2 * dimension); l = l + 2) {
 
-            rij =  sqrt( ((numbers[i]-numbers[j])*(numbers[i]-numbers[j]) + (numbers[i+1]-numbers[j+1])*(numbers[i+1]-numbers[j+1]))/10.0 );
-            tij = (long long int)round(rij);
-            if (tij<rij) cities[counter][counter2] = tij + 1;
-            else cities[counter][counter2] = tij;
+            rkl = sqrt(((numbers[k] - numbers[l]) * (numbers[k] - numbers[l]) +
+                        (numbers[k + 1] - numbers[l + 1]) * (numbers[k + 1] - numbers[l + 1])) / 10.0);
+            tkl = (long long int) round(rkl);
+            if (tkl < rkl) arrayOfMatrixCities[i][j] = tkl + 1;
+            else arrayOfMatrixCities[i][j] = tkl;
 
-            counter2++;
+            j++;
         }
-        counter2=0;
-        counter ++;
+        j = 0;
+        i++;
     }
-    std::cout<<std::endl;
-    std::cout<<counter;
+    std::cout << std::endl;
+    std::cout << i;
+}
+
+
+int TSPLIB_Parser::GetDimension() {
+    return dimension;
+}
+
+std::string TSPLIB_Parser::GetFileName() {
+    return fileName;
+}
+
+std::string TSPLIB_Parser::GetGraphType() {
+    return type;
+}
+
+long long int **TSPLIB_Parser::GetArrayOfMatrixCities() {
+    return arrayOfMatrixCities;
 }

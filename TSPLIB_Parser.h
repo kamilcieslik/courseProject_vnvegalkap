@@ -12,18 +12,24 @@
 class TSPLIB_Parser {
 private:
     const char delimiter = ':';
-    std::string name;
+    std::string fileName;
     std::string type;
-    std::string comment;
     std::string edgeWeightType;
     std::string edgeWeightFormat;
     std::vector<long long int> numbers;
     std::vector<long long int> optimalTour;
     int cost;
+    int dimension;
+    long long int **arrayOfMatrixCities;
 
 public:
-    long long int **cities = nullptr;// Interpreted Matrix, usable for the Little algorithm
-    int dimension;
+    long long int** GetArrayOfMatrixCities();
+
+    int GetDimension();
+
+    std::string GetFileName();
+
+    std::string GetGraphType();
 
     bool checkParameter(std::string, std::string);
 
@@ -33,25 +39,25 @@ public:
 
     void printSolution();
 
-    void writeSolution(std::ofstream &);
+    void WriteSolution(std::ofstream &);
 
-    bool fillMatrix();
+    bool GenerateMatrix();
 
-    void euclidesMatrix();
+    void EuclidesMatrix();
 
-    void pseudoEuclidesMatrix();
+    void PseudoEuclidesMatrix();
 
-    void fullMatrix();
+    void FullMatrix();
 
-    void upperRow();
+    void UpperRowMatrix();
 
-    void lowerRow();
+    void LowerRowMatrix();
 
-    void upperDiagRow();
+    void UpperDiagRowMatrix();
 
-    void lowerDiagRow();
+    void LowerDiagRowMatrix();
 
-    TSPLIB_Parser(std::ifstream &);
+    TSPLIB_Parser(std::string path);
 
     ~TSPLIB_Parser();
 };

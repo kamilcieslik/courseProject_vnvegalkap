@@ -9,8 +9,7 @@
 #include "TravellingSalesmanProblem.h"
 
 TravellingSalesmanProblem::TravellingSalesmanProblem() : amountOfCities(0), arrayOfMatrixOfCities(nullptr),
-                                                         optimalWay_Solution(nullptr),
-                                                         allPossiblePermutations(nullptr) {
+                                                         optimalWay_Solution(nullptr) {
 }
 
 TravellingSalesmanProblem::~TravellingSalesmanProblem() {
@@ -28,44 +27,32 @@ void TravellingSalesmanProblem::DeleteTravellingSalesman() {
         delete[] optimalWay_Solution;
         optimalWay_Solution = nullptr;
     }
-
-    if (allPossiblePermutations != nullptr) {
-        delete[] allPossiblePermutations;
-        allPossiblePermutations = nullptr;
-    }
 }
 
-void TravellingSalesmanProblem::ReadCitiesFromFile(std::string path) {
-    if (arrayOfMatrixOfCities != nullptr)
-        DeleteTravellingSalesman();
-
-    std::fstream file(path, std::ios::in);
-    if (file.is_open()) {
-        file >> amountOfCities;
-
-        arrayOfMatrixOfCities = new int *[amountOfCities];
-        for (auto i = 0; i < amountOfCities; i++) {
-            arrayOfMatrixOfCities[i] = new int[amountOfCities];
-        }
-        int *securityMatrixForReadingPerLine = new int[amountOfCities];
-
-        for (auto i = 0; i < amountOfCities; i++) {
-            for (auto j = 0; j < amountOfCities; j++) {
-                if (file.fail()) throw std::logic_error("Błąd odczytu danych w pliku.");
-                file >> securityMatrixForReadingPerLine[j];
-            }
-
-            for (auto j = 0; j < amountOfCities; j++) {
-                arrayOfMatrixOfCities[i][j] = securityMatrixForReadingPerLine[j];
-            }
-        }
-        delete[] securityMatrixForReadingPerLine;
-        file.close();
-
-        PrintCitiesForTheTravellingSalesman();
-    } else {
-        std::cout << "Błąd otwarcia pliku.\n";
+void TravellingSalesmanProblem::LoadArrayOfMatrixOfCities(long long int **_cities, int _amountOfCities,
+                                                          std::string _fileName, std::string _graphType) {
+    if(arrayOfMatrixOfCities!=nullptr){
+        for (int i = 0; i < amountOfCities; i++)
+            delete[] arrayOfMatrixOfCities[i];
+        delete[] arrayOfMatrixOfCities;
     }
+
+    amountOfCities=_amountOfCities;
+
+    arrayOfMatrixOfCities = new long long int *[amountOfCities];
+    for (int i = 0; i < amountOfCities; i++)
+        arrayOfMatrixOfCities[i] = new long long int[amountOfCities];
+
+    for ( int i = 0; i < amountOfCities; i ++ )
+    {
+        for ( int j = 0; j < amountOfCities; j ++ )
+        {
+            arrayOfMatrixOfCities[i][j] = _cities[i][j];
+        }
+    }
+
+    fileName=_fileName;
+    graphType=_graphType;
 }
 
 void TravellingSalesmanProblem::GenerateRandomCities(int amountOfCities, int maxDistanceBetweenCity) {
@@ -79,9 +66,9 @@ void TravellingSalesmanProblem::GenerateRandomCities(int amountOfCities, int max
             throw std::invalid_argument("Liczba miast nie może być mniejsza od 1.");
         }
 
-        arrayOfMatrixOfCities = new int *[this->amountOfCities];
+        arrayOfMatrixOfCities = new long long int *[this->amountOfCities];
         for (auto i = 0; i < this->amountOfCities; i++) {
-            arrayOfMatrixOfCities[i] = new int[this->amountOfCities];
+            arrayOfMatrixOfCities[i] = new long long int[this->amountOfCities];
         }
 
         std::random_device rd;
@@ -96,9 +83,9 @@ void TravellingSalesmanProblem::GenerateRandomCities(int amountOfCities, int max
     } else {
         this->amountOfCities = amountOfCities;
 
-        arrayOfMatrixOfCities = new int *[this->amountOfCities];
+        arrayOfMatrixOfCities = new long long int *[this->amountOfCities];
         for (auto i = 0; i < this->amountOfCities; i++) {
-            arrayOfMatrixOfCities[i] = new int[this->amountOfCities];
+            arrayOfMatrixOfCities[i] = new long long int[this->amountOfCities];
         }
 
         std::random_device rd;
@@ -117,32 +104,11 @@ void TravellingSalesmanProblem::PrintCitiesForTheTravellingSalesman() {
     if (arrayOfMatrixOfCities == nullptr)
         throw std::logic_error("Brak miast do wyświetlenia.");
 
-    std::cout << "\e[1mProblem\e[0m" << std::endl << std::endl;
-    std::cout << "Number of cities:\t" << amountOfCities << std::endl << std::endl;
-
-    std::cout << "\t";
-    for (auto i = 0; i < amountOfCities; i++) {
-        std::cout << i << ".\t";
-    }
-    std::cout << "\v" << std::endl;
-    for (auto i = 0; i < amountOfCities; i++) {
-        for (auto j = 0; j < amountOfCities; j++) {
-            if (j == 0) {
-                if (arrayOfMatrixOfCities[i][j] < 0) {
-                    std::cout << i << ".\t\b" << arrayOfMatrixOfCities[i][j];
-                } else {
-                    std::cout << i << ".\t" << arrayOfMatrixOfCities[i][j];
-                }
-            } else {
-                if (arrayOfMatrixOfCities[i][j] < 0) {
-                    std::cout << "\t\b" << arrayOfMatrixOfCities[i][j];
-                } else {
-                    std::cout << "\t" << arrayOfMatrixOfCities[i][j];
-                }
-            }
-        }
-        std::cout << "\v" << std::endl;
-    }
+    std::cout << "\e[1mProblem\e[0m" << std::endl;
+    std::cout << "-------------------" << std::endl;
+    std::cout << "Name of TSPLIB file:\t" << fileName << std::endl;
+    std::cout << "Graph type:\t\t" << graphType << std::endl;
+    std::cout << "Number of cities:\t" << amountOfCities << std::endl;
 }
 
 // -------------------------------------------------------------------
@@ -232,3 +198,4 @@ void TravellingSalesmanProblem::PrintSolution() {
         std::cout << "0" << std::endl;
     }
 }
+
