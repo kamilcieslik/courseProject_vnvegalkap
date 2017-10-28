@@ -13,9 +13,7 @@ TSPLIB_Parser::TSPLIB_Parser(std::string path) : arrayOfMatrixCities(nullptr) {
     std::ifstream file(path, std::ios::in);
     if (file.is_open()) {
         if (readProblem(file)) {
-        }
-        else
-        {
+        } else {
             throw std::invalid_argument("Błąd odczytu pliku.");
         }
     } else
@@ -24,7 +22,7 @@ TSPLIB_Parser::TSPLIB_Parser(std::string path) : arrayOfMatrixCities(nullptr) {
 
 TSPLIB_Parser::~TSPLIB_Parser() {
     if (arrayOfMatrixCities != nullptr) {
-        for (int i = 0; i < dimension; i++)
+        for (auto i = 0; i < dimension; i++)
             delete[] arrayOfMatrixCities[i];
         delete[] arrayOfMatrixCities;
     }
@@ -62,7 +60,6 @@ bool TSPLIB_Parser::readProblem(std::ifstream &inputFile) {
             while (stream >> n) {
                 this->numbers.push_back((long long int &&) n);
             }
-
         }
         if (line == "EDGE_WEIGHT_SECTION") {
             isMatrixType = true;
@@ -131,47 +128,14 @@ std::string TSPLIB_Parser::trim(std::string s) {
     return s;
 }
 
-void TSPLIB_Parser::printSolution() {
-    time_t now = time(0);
-    tm *localtm = localtime(&now);
-
-    std::cout << "NAME : " << this->fileName << "." << this->optimalTour.size() << ".tour" << std::endl;
-    std::cout << "COMMENT : Lenght = " << this->cost << ". Found by John D.C. Little " << asctime(localtm);
-    std::cout << "TYPE : TOUR" << std::endl;
-    std::cout << "DIMENSION : " << this->optimalTour.size() << std::endl;
-    std::cout << "TOUR_SECTION" << std::endl;
-
-    for (long long int &i : this->optimalTour) {
-        std::cout << i << " ";
-    }
-    std::cout << "-1" << std::endl;
-}
-
-void TSPLIB_Parser::WriteSolution(std::ofstream &outputFile) {
-    time_t now = time(0);
-    auto pTm = localtime(&now);
-
-    outputFile << "NAME : " << this->fileName << "." << this->optimalTour.size() << ".tour" << std::endl;
-    outputFile << "COMMENT : Lenght = " << this->cost << ". Found by John D.C. Little " << asctime(pTm);
-    outputFile << "TYPE : TOUR" << std::endl;
-    outputFile << "DIMENSION : " << this->optimalTour.size() << std::endl;
-    outputFile << "TOUR_SECTION" << std::endl;
-
-    for (long long int &i : this->optimalTour) {
-        outputFile << i << std::endl;
-    }
-    outputFile << "-1" << std::endl;
-    outputFile << "EOF";
-}
-
 bool TSPLIB_Parser::GenerateMatrix() {
     if (arrayOfMatrixCities != nullptr) {
-        for (int i = 0; i < dimension; i++)
+        for (auto i = 0; i < dimension; i++)
             delete[] arrayOfMatrixCities[i];
         delete[] arrayOfMatrixCities;
     }
     arrayOfMatrixCities = new long long int *[dimension];
-    for (int i = 0; i < dimension; i++)
+    for (auto i = 0; i < dimension; i++)
         arrayOfMatrixCities[i] = new long long int[dimension];
 
     if (edgeWeightType == "EUC_2D")
@@ -199,8 +163,8 @@ bool TSPLIB_Parser::GenerateMatrix() {
 }
 
 void TSPLIB_Parser::FullMatrix() {
-    for (int i = 0; i < this->dimension; i++) {
-        for (int j = 0; j < this->dimension; j++) {
+    for (auto i = 0; i < this->dimension; i++) {
+        for (auto j = 0; j < this->dimension; j++) {
             if (i != j) {
                 arrayOfMatrixCities[i][j] = this->numbers[i * this->dimension + j];
             }
@@ -210,8 +174,8 @@ void TSPLIB_Parser::FullMatrix() {
 
 void TSPLIB_Parser::UpperRowMatrix() {
     int counter = 0;
-    for (int i = 0; i < this->dimension - 1; i++) {
-        for (int j = i + 1; j < this->dimension; j++) {
+    for (auto i = 0; i < this->dimension - 1; i++) {
+        for (auto j = i + 1; j < this->dimension; j++) {
             arrayOfMatrixCities[i][j] = this->numbers[counter];
             arrayOfMatrixCities[j][i] = this->numbers[counter];
             counter++;
@@ -221,8 +185,8 @@ void TSPLIB_Parser::UpperRowMatrix() {
 
 void TSPLIB_Parser::LowerRowMatrix() {
     int counter = 0;
-    for (int i = 1; i < this->dimension; i++) {
-        for (int j = 0; j < i; j++) {
+    for (auto i = 1; i < this->dimension; i++) {
+        for (auto j = 0; j < i; j++) {
             arrayOfMatrixCities[i][j] = this->numbers[counter];
             arrayOfMatrixCities[j][i] = this->numbers[counter];
             counter++;
@@ -232,8 +196,8 @@ void TSPLIB_Parser::LowerRowMatrix() {
 
 void TSPLIB_Parser::UpperDiagRowMatrix() {
     int counter = 0;
-    for (int i = 0; i < this->dimension; i++) {
-        for (int j = i; j < this->dimension; j++) {
+    for (auto i = 0; i < this->dimension; i++) {
+        for (auto j = i; j < this->dimension; j++) {
             if (i != j) {
                 arrayOfMatrixCities[i][j] = this->numbers[counter];
                 arrayOfMatrixCities[j][i] = this->numbers[counter];
@@ -245,8 +209,8 @@ void TSPLIB_Parser::UpperDiagRowMatrix() {
 
 void TSPLIB_Parser::LowerDiagRowMatrix() {
     int counter = 0;
-    for (int i = 0; i < this->dimension; i++) {
-        for (int j = 0; j < i + 1; j++) {
+    for (auto i = 0; i < this->dimension; i++) {
+        for (auto j = 0; j < i + 1; j++) {
             if (j != i) {
                 arrayOfMatrixCities[i][j] = this->numbers[counter];
                 arrayOfMatrixCities[j][i] = this->numbers[counter];
@@ -259,21 +223,17 @@ void TSPLIB_Parser::LowerDiagRowMatrix() {
 void TSPLIB_Parser::EuclidesMatrix() {
     int i = 0;
     int j = 0;
-    for (int k = 0; k < (2 * dimension); k = k + 2) {
-        for (int l = 0; l < (2 * dimension); l = l + 2) {
+    for (auto k = 0; k < (2 * dimension); k = k + 2) {
+        for (auto l = 0; l < (2 * dimension); l = l + 2) {
 
             arrayOfMatrixCities[i][j] = (long long int) round(
                     sqrt((numbers[k] - numbers[l]) * (numbers[k] - numbers[l]) +
                          (numbers[k + 1] - numbers[l + 1]) * (numbers[k + 1] - numbers[l + 1])));
             j++;
         }
-        std::cout << "kurwa" << std::endl;
         j = 0;
         i++;
     }
-    std::cout << std::endl;
-    std::cout << i;
-    std::cout << "wyszlo git";
 }
 
 void TSPLIB_Parser::PseudoEuclidesMatrix() {
@@ -281,8 +241,8 @@ void TSPLIB_Parser::PseudoEuclidesMatrix() {
     long long int tkl;
     int i = 0;
     int j = 0;
-    for (int k = 0; k < (2 * dimension); k = k + 2) {
-        for (int l = 0; l < (2 * dimension); l = l + 2) {
+    for (auto k = 0; k < (2 * dimension); k = k + 2) {
+        for (auto l = 0; l < (2 * dimension); l = l + 2) {
 
             rkl = sqrt(((numbers[k] - numbers[l]) * (numbers[k] - numbers[l]) +
                         (numbers[k + 1] - numbers[l + 1]) * (numbers[k + 1] - numbers[l + 1])) / 10.0);
@@ -295,8 +255,6 @@ void TSPLIB_Parser::PseudoEuclidesMatrix() {
         j = 0;
         i++;
     }
-    std::cout << std::endl;
-    std::cout << i;
 }
 
 

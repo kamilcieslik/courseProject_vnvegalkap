@@ -5,7 +5,6 @@
 #ifndef COURSEPROJECT_SDZ3_TSPLIB_PARSER_H
 #define COURSEPROJECT_SDZ3_TSPLIB_PARSER_H
 
-
 #include <vector>
 #include <string>
 
@@ -17,8 +16,6 @@ private:
     std::string edgeWeightType;
     std::string edgeWeightFormat;
     std::vector<long long int> numbers;
-    std::vector<long long int> optimalTour;
-    int cost;
     int dimension;
     long long int **arrayOfMatrixCities;
 
@@ -36,10 +33,6 @@ public:
     std::string trim(std::string);
 
     bool readProblem(std::ifstream &);
-
-    void printSolution();
-
-    void WriteSolution(std::ofstream &);
 
     bool GenerateMatrix();
 
@@ -61,6 +54,5 @@ public:
 
     ~TSPLIB_Parser();
 };
-
 
 #endif //COURSEPROJECT_SDZ3_TSPLIB_PARSER_H

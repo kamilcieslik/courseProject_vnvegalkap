@@ -6,6 +6,7 @@
 #include <random>
 #include <climits>
 #include <algorithm>
+#include <map>
 #include "TravellingSalesmanProblem.h"
 
 TravellingSalesmanProblem::TravellingSalesmanProblem() : amountOfCities(0), arrayOfMatrixOfCities(nullptr),
@@ -31,28 +32,26 @@ void TravellingSalesmanProblem::DeleteTravellingSalesman() {
 
 void TravellingSalesmanProblem::LoadArrayOfMatrixOfCities(long long int **_cities, int _amountOfCities,
                                                           std::string _fileName, std::string _graphType) {
-    if(arrayOfMatrixOfCities!=nullptr){
+    if (arrayOfMatrixOfCities != nullptr) {
         for (int i = 0; i < amountOfCities; i++)
             delete[] arrayOfMatrixOfCities[i];
         delete[] arrayOfMatrixOfCities;
     }
 
-    amountOfCities=_amountOfCities;
+    amountOfCities = _amountOfCities;
 
     arrayOfMatrixOfCities = new long long int *[amountOfCities];
     for (int i = 0; i < amountOfCities; i++)
         arrayOfMatrixOfCities[i] = new long long int[amountOfCities];
 
-    for ( int i = 0; i < amountOfCities; i ++ )
-    {
-        for ( int j = 0; j < amountOfCities; j ++ )
-        {
+    for (int i = 0; i < amountOfCities; i++) {
+        for (int j = 0; j < amountOfCities; j++) {
             arrayOfMatrixOfCities[i][j] = _cities[i][j];
         }
     }
 
-    fileName=_fileName;
-    graphType=_graphType;
+    fileName = _fileName;
+    graphType = _graphType;
 }
 
 void TravellingSalesmanProblem::GenerateRandomCities(int amountOfCities, int maxDistanceBetweenCity) {
@@ -157,6 +156,13 @@ void TravellingSalesmanProblem::GreedyAlgorithm() {
     delete[] visitedCities;
 }
 
+std::pair<int, long long int> GetMaxValueFromMap(const std::map<int, long long int> &x) {
+    using pairtype=std::pair<int, long long int>;
+    return *std::max_element(x.begin(), x.end(), [](const pairtype &p1, const pairtype &p2) {
+        return p1.second < p2.second;
+    });
+}
+
 // -------------------------------------------------------------------
 // Algorytm podziału i ograniczeń dla problemu komiwojażera.
 // -------------------------------------------------------------------
@@ -168,6 +174,344 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
         delete[] optimalWay_Solution;
 
     setGreedyAlgorithm = false;
+    optimalWay_Solution = new int[amountOfCities];
+
+    std::map<int, int> edgesOfSolution;
+
+    std::map<int, long long int> minimumValueInRow;
+    std::map<int, long long int> minimumValueInColumn;
+
+    long long int **arrayOfBranchAndBoundMatrixOfCities = new long long int *[amountOfCities];
+    for (auto i = 0; i < amountOfCities; i++)
+        arrayOfBranchAndBoundMatrixOfCities[i] = new long long int[amountOfCities];
+
+    for (auto i = 0; i < amountOfCities; i++) {
+        for (auto j = 0; j < amountOfCities; j++)
+            arrayOfBranchAndBoundMatrixOfCities[i][j] = arrayOfMatrixOfCities[i][j];
+        arrayOfBranchAndBoundMatrixOfCities[i][i] = INT_MAX;
+    }
+
+    int amountOfCitiesInBranchAndBoundMatrix = amountOfCities;
+
+    //---
+    std::cout << "Odległości pomiędzy miastami (macierz wag) oryginalnie: " << std::endl;
+    std::cout << "\t";
+    for (auto i = 0; i < amountOfCities; i++) {
+        std::cout << i << ".\t";
+    }
+    std::cout << "\v" << std::endl;
+    for (auto i = 0; i < amountOfCities; i++) {
+        for (auto j = 0; j < amountOfCities; j++) {
+            if (j == 0) {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            } else {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            }
+        }
+        std::cout << "\v" << std::endl;
+    }
+    //---
+
+    // Wyznaczenie minimalnych wartości dla każdego wiersza.
+    for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+        minimumValueInRow[i] = INT_MAX;
+        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+            if (arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInRow[i]) {
+                minimumValueInRow[i] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+            }
+        }
+    }
+
+    //---
+    std::cout << "Minimalne wartości w wierszach: " << std::endl;
+    for (std::map<int, long long int>::iterator map_iterator = minimumValueInRow.begin();
+         map_iterator != minimumValueInRow.end(); ++map_iterator) {
+        std::cout << map_iterator->first << " => " << map_iterator->second << std::endl;
+    }
+    std::cout << std::endl;
+    //---
+
+    // Odjęcie minimalnych wartości wiersza od każdego elementu wiersza.
+    for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++)
+            if (arrayOfBranchAndBoundMatrixOfCities[i][j] != INT_MAX)
+                arrayOfBranchAndBoundMatrixOfCities[i][j] -= minimumValueInRow[i];
+    }
+
+    //---
+    std::cout << "Odległości pomiędzy miastami (macierz wag) po odjęciu minimów wierszy: " << std::endl;
+    std::cout << "\t";
+    for (auto i = 0; i < amountOfCities; i++) {
+        std::cout << i << ".\t";
+    }
+    std::cout << "\v" << std::endl;
+    for (auto i = 0; i < amountOfCities; i++) {
+        for (auto j = 0; j < amountOfCities; j++) {
+            if (j == 0) {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            } else {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            }
+        }
+        std::cout << "\v" << std::endl;
+    }
+    //---
+
+    // Wyznaczenie minimalnych wartości dla każdej kolumny.
+    for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+        minimumValueInColumn[j] = INT_MAX;
+        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+            if (arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInColumn[j]) {
+                minimumValueInColumn[j] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+            }
+        }
+    }
+
+    //---
+    std::cout << std::endl;
+    std::cout << "Minimalne wartości w kolumnach: " << std::endl;
+    for (std::map<int, long long int>::iterator map_iterator = minimumValueInColumn.begin();
+         map_iterator != minimumValueInColumn.end(); ++map_iterator) {
+        std::cout << map_iterator->first << " => " << map_iterator->second << std::endl;
+    }
+    std::cout << std::endl;
+    //---
+
+    // Odjęcie minimalnych wartości kolumny od każdego elementu kolumny.
+    for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++)
+            if (arrayOfBranchAndBoundMatrixOfCities[i][j] != INT_MAX)
+                arrayOfBranchAndBoundMatrixOfCities[i][j] -= minimumValueInColumn[j];
+
+    }
+
+    //---
+    std::cout << "Odległości pomiędzy miastami (macierz wag) po odjęciu minimów kolumn: " << std::endl;
+    std::cout << "\t";
+    for (auto i = 0; i < amountOfCities; i++) {
+        std::cout << i << ".\t";
+    }
+    std::cout << "\v" << std::endl;
+    for (auto i = 0; i < amountOfCities; i++) {
+        for (auto j = 0; j < amountOfCities; j++) {
+            if (j == 0) {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            } else {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            }
+        }
+        std::cout << "\v" << std::endl;
+    }
+    //---
+
+    // Wyznaczenie parametru lowerBound - suma minimów wierszy + suma minimów kolumn.
+    auto lowerBound = std::accumulate(std::begin(minimumValueInRow), std::end(minimumValueInRow), 0,
+                                      [](int value, const std::map<int, int>::value_type &p) {
+                                          return value + p.second;
+                                      }
+    ) + std::accumulate(std::begin(minimumValueInColumn), std::end(minimumValueInColumn), 0,
+                        [](int value, const std::map<int, int>::value_type &p) {
+                            return value + p.second;
+                        }
+    );
+
+    //---
+    std::cout << std::endl;
+    std::cout << "Lower Bound: " << lowerBound << "." << std::endl << std::endl;
+    //---
+
+    // Wyznaczenie minimalnych wartości dla każdego wiersza i kolumny (0 uznane za minimum jeżeli wystąpi 2 razy).
+    int amountOfZeros;
+    for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+        amountOfZeros = 0;
+        minimumValueInRow[i] = INT_MAX;
+        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+            if (arrayOfBranchAndBoundMatrixOfCities[i][j] == 0)
+                amountOfZeros++;
+            if (amountOfZeros >= 2) {
+                minimumValueInRow[i] = 0;
+                break;
+            }
+            if ((arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInRow[i]) &&
+                (arrayOfBranchAndBoundMatrixOfCities[i][j] != 0))
+                minimumValueInRow[i] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+
+        }
+    }
+
+    for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+        amountOfZeros = 0;
+        minimumValueInColumn[j] = INT_MAX;
+        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+            if (arrayOfBranchAndBoundMatrixOfCities[i][j] == 0)
+                amountOfZeros++;
+            if (amountOfZeros == 2) {
+                minimumValueInColumn[j] = 0;
+                break;
+            }
+            if ((arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInColumn[j]) &&
+                (arrayOfBranchAndBoundMatrixOfCities[i][j] != 0))
+                minimumValueInColumn[j] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+        }
+    }
+
+    //---
+    std::cout << "Minimalne wartości w wierszach (0 uznane za minimum jeżeli wystąpi 2 razy): " << std::endl;
+    for (std::map<int, long long int>::iterator map_iterator = minimumValueInRow.begin();
+         map_iterator != minimumValueInRow.end(); ++map_iterator) {
+        std::cout << map_iterator->first << " => " << map_iterator->second << std::endl;
+    }
+    std::cout << std::endl;
+    std::cout << "Minimalne wartości w kolumnach (0 uznane za minimum jeżeli wystąpi 2 razy): " << std::endl;
+    for (std::map<int, long long int>::iterator map_iterator = minimumValueInColumn.begin();
+         map_iterator != minimumValueInColumn.end(); ++map_iterator) {
+        std::cout << map_iterator->first << " => " << map_iterator->second << std::endl;
+    }
+    std::cout << std::endl;
+    //---
+
+    int maximumValueFromMinimumsOfRows = GetMaxValueFromMap(minimumValueInRow).second;
+    int indexOfMaximumValueFromMinimumsOfRows = GetMaxValueFromMap(minimumValueInRow).first;
+
+    int maximumValueFromMinimumsOfColumns = GetMaxValueFromMap(minimumValueInColumn).second;
+    int indexOfMaximumValueFromMinimumsOfColumns = GetMaxValueFromMap(minimumValueInColumn).first;
+
+    //---
+    if (maximumValueFromMinimumsOfRows > maximumValueFromMinimumsOfColumns)
+        std::cout << "Największa wartość minimum - " << maximumValueFromMinimumsOfRows << ", wiersz - "
+                  << indexOfMaximumValueFromMinimumsOfRows << "." << std::endl;
+    else
+        std::cout << "Największa wartość minimum - " << maximumValueFromMinimumsOfColumns << ", kolumna - "
+                  << indexOfMaximumValueFromMinimumsOfColumns << "." << std::endl;
+    //---
+
+    int indexOfDeletedRow;
+    int indexOfDeletedColumn;
+    int indexOfDeletedSection;
+
+    if (maximumValueFromMinimumsOfRows > maximumValueFromMinimumsOfColumns) {
+        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+            if (arrayOfBranchAndBoundMatrixOfCities[indexOfMaximumValueFromMinimumsOfRows][j] == 0) {
+                indexOfDeletedSection = j;
+                indexOfDeletedRow=indexOfMaximumValueFromMinimumsOfRows;
+                indexOfDeletedColumn=indexOfDeletedSection;
+                break;
+            }
+        }
+        arrayOfBranchAndBoundMatrixOfCities[indexOfDeletedSection][indexOfMaximumValueFromMinimumsOfRows] = INT_MAX;
+    } else {
+
+        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+            if (arrayOfBranchAndBoundMatrixOfCities[i][indexOfMaximumValueFromMinimumsOfColumns] == 0) {
+                indexOfDeletedSection = i;
+                indexOfDeletedRow=indexOfDeletedSection;
+                indexOfDeletedColumn=indexOfMaximumValueFromMinimumsOfRows;
+                break;
+            }
+        }
+        arrayOfBranchAndBoundMatrixOfCities[indexOfMaximumValueFromMinimumsOfColumns][indexOfDeletedSection] = INT_MAX;
+    }
+
+    //---
+    std::cout << "Odległości pomiędzy miastami (macierz wag) z dodaną blokadą: " << std::endl;
+    std::cout << "\t";
+    for (auto i = 0; i < amountOfCities; i++) {
+        std::cout << i << ".\t";
+    }
+    std::cout << "\v" << std::endl;
+    for (auto i = 0; i < amountOfCities; i++) {
+        for (auto j = 0; j < amountOfCities; j++) {
+            if (j == 0) {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            } else {
+                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                } else {
+                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                        std::cout << "\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                }
+            }
+        }
+        std::cout << "\v" << std::endl;
+    }
+    //---
+
+    edgesOfSolution.insert(indexOfDeletedRow, indexOfDeletedColumn);
 }
 
 
