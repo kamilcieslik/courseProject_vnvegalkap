@@ -163,6 +163,13 @@ std::pair<int, long long int> GetMaxValueFromMap(const std::map<int, long long i
     });
 }
 
+int FindSectionIndex(std::vector<int> _vec, int _amountOfCities, int _indexOfDeletedSection) {
+    for (auto i = 0; i < _amountOfCities; i++) {
+        if (_vec[i] == _indexOfDeletedSection)
+            return i;
+    }
+}
+
 // -------------------------------------------------------------------
 // Algorytm podziału i ograniczeń dla problemu komiwojażera.
 // -------------------------------------------------------------------
@@ -176,55 +183,70 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     setGreedyAlgorithm = false;
     optimalWay_Solution = new int[amountOfCities];
 
+    int lowerBound = 0;
+    int lowerBoundK1 = 0;
+    int lowerBoundK2 = 0;
+
     std::map<int, int> edgesOfSolution;
 
     std::map<int, long long int> minimumValueInRow;
     std::map<int, long long int> minimumValueInColumn;
 
-    long long int **arrayOfBranchAndBoundMatrixOfCities = new long long int *[amountOfCities];
-    for (auto i = 0; i < amountOfCities; i++)
-        arrayOfBranchAndBoundMatrixOfCities[i] = new long long int[amountOfCities];
-
+    long long int **activeRoute = new long long int *[amountOfCities];
+    long long int **subsetMatrix;
     for (auto i = 0; i < amountOfCities; i++) {
-        for (auto j = 0; j < amountOfCities; j++)
-            arrayOfBranchAndBoundMatrixOfCities[i][j] = arrayOfMatrixOfCities[i][j];
-        arrayOfBranchAndBoundMatrixOfCities[i][i] = INT_MAX;
+        activeRoute[i] = new long long int[amountOfCities];
     }
 
-    int amountOfCitiesInBranchAndBoundMatrix = amountOfCities;
+    for (auto i = 0; i < amountOfCities; i++) {
+        for (auto j = 0; j < amountOfCities; j++) {
+            activeRoute[i][j] = arrayOfMatrixOfCities[i][j];
+        }
+        activeRoute[i][i] = INT_MAX;
+    }
+
+    std::vector<int> indexesOfRowsInSubset;
+    std::vector<int> indexesOfColumnsInSubset;
+    for (auto i = 0; i < amountOfCities; i++) {
+        indexesOfRowsInSubset.push_back(i);
+        indexesOfColumnsInSubset.push_back(i);
+    }
+
+    int amountOfCitiesInActualSubset = amountOfCities;
 
     //---
     std::cout << "Odległości pomiędzy miastami (macierz wag) oryginalnie: " << std::endl;
     std::cout << "\t";
-    for (auto i = 0; i < amountOfCities; i++) {
-        std::cout << i << ".\t";
+    for (std::vector<int>::const_iterator i = indexesOfColumnsInSubset.begin();
+         i != indexesOfColumnsInSubset.end(); i++) {
+        std::cout << *i << ".\t";
     }
     std::cout << "\v" << std::endl;
-    for (auto i = 0; i < amountOfCities; i++) {
-        for (auto j = 0; j < amountOfCities; j++) {
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
             if (j == 0) {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                if (activeRoute[i][j] < 0) {
+                    if (activeRoute[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << activeRoute[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    if (activeRoute[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << activeRoute[i][j];
                 }
             } else {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                if (activeRoute[i][j] < 0) {
+                    if (activeRoute[i][j] == INT_MAX)
                         std::cout << "\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t\b" << activeRoute[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                    if (activeRoute[i][j] == INT_MAX)
                         std::cout << "\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t" << activeRoute[i][j];
                 }
             }
         }
@@ -233,11 +255,12 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     //---
 
     // Wyznaczenie minimalnych wartości dla każdego wiersza.
-    for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
-        minimumValueInRow[i] = INT_MAX;
-        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
-            if (arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInRow[i]) {
-                minimumValueInRow[i] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+    minimumValueInRow.clear();
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+        minimumValueInRow[indexesOfRowsInSubset[i]] = INT_MAX;
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
+            if (activeRoute[i][j] < minimumValueInRow[indexesOfRowsInSubset[i]]) {
+                minimumValueInRow[indexesOfRowsInSubset[i]] = activeRoute[i][j];
             }
         }
     }
@@ -252,44 +275,45 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     //---
 
     // Odjęcie minimalnych wartości wiersza od każdego elementu wiersza.
-    for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
-        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++)
-            if (arrayOfBranchAndBoundMatrixOfCities[i][j] != INT_MAX)
-                arrayOfBranchAndBoundMatrixOfCities[i][j] -= minimumValueInRow[i];
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++)
+            if (activeRoute[i][j] != INT_MAX)
+                activeRoute[i][j] -= minimumValueInRow[i];
     }
 
     //---
     std::cout << "Odległości pomiędzy miastami (macierz wag) po odjęciu minimów wierszy: " << std::endl;
     std::cout << "\t";
-    for (auto i = 0; i < amountOfCities; i++) {
-        std::cout << i << ".\t";
+    for (std::vector<int>::const_iterator i = indexesOfColumnsInSubset.begin();
+         i != indexesOfColumnsInSubset.end(); i++) {
+        std::cout << *i << ".\t";
     }
     std::cout << "\v" << std::endl;
-    for (auto i = 0; i < amountOfCities; i++) {
-        for (auto j = 0; j < amountOfCities; j++) {
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
             if (j == 0) {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                if (activeRoute[i][j] < 0) {
+                    if (activeRoute[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << activeRoute[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    if (activeRoute[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << activeRoute[i][j];
                 }
             } else {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                if (activeRoute[i][j] < 0) {
+                    if (activeRoute[i][j] == INT_MAX)
                         std::cout << "\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t\b" << activeRoute[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                    if (activeRoute[i][j] == INT_MAX)
                         std::cout << "\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t" << activeRoute[i][j];
                 }
             }
         }
@@ -298,11 +322,12 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     //---
 
     // Wyznaczenie minimalnych wartości dla każdej kolumny.
-    for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
-        minimumValueInColumn[j] = INT_MAX;
-        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
-            if (arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInColumn[j]) {
-                minimumValueInColumn[j] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+    minimumValueInColumn.clear();
+    for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
+        minimumValueInColumn[indexesOfColumnsInSubset[j]] = INT_MAX;
+        for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+            if (activeRoute[i][j] < minimumValueInColumn[indexesOfColumnsInSubset[j]]) {
+                minimumValueInColumn[indexesOfColumnsInSubset[j]] = activeRoute[i][j];
             }
         }
     }
@@ -318,45 +343,45 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     //---
 
     // Odjęcie minimalnych wartości kolumny od każdego elementu kolumny.
-    for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
-        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++)
-            if (arrayOfBranchAndBoundMatrixOfCities[i][j] != INT_MAX)
-                arrayOfBranchAndBoundMatrixOfCities[i][j] -= minimumValueInColumn[j];
+    for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
+        for (auto i = 0; i < amountOfCitiesInActualSubset; i++)
+            if (activeRoute[i][j] != INT_MAX)
+                activeRoute[i][j] -= minimumValueInColumn[j];
 
     }
 
     //---
     std::cout << "Odległości pomiędzy miastami (macierz wag) po odjęciu minimów kolumn: " << std::endl;
     std::cout << "\t";
-    for (auto i = 0; i < amountOfCities; i++) {
-        std::cout << i << ".\t";
+    for (std::vector<int>::const_iterator i = indexesOfRowsInSubset.begin(); i != indexesOfRowsInSubset.end(); i++) {
+        std::cout << *i << ".\t";
     }
     std::cout << "\v" << std::endl;
-    for (auto i = 0; i < amountOfCities; i++) {
-        for (auto j = 0; j < amountOfCities; j++) {
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
             if (j == 0) {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                if (activeRoute[i][j] < 0) {
+                    if (activeRoute[i][j] == INT_MAX)
+                        std::cout << indexesOfColumnsInSubset[i] << ".\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfColumnsInSubset[i] << ".\t\b" << activeRoute[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    if (activeRoute[i][j] == INT_MAX)
+                        std::cout << indexesOfColumnsInSubset[i] << ".\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfColumnsInSubset[i] << ".\t" << activeRoute[i][j];
                 }
             } else {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                if (activeRoute[i][j] < 0) {
+                    if (activeRoute[i][j] == INT_MAX)
                         std::cout << "\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t\b" << activeRoute[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                    if (activeRoute[i][j] == INT_MAX)
                         std::cout << "\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t" << activeRoute[i][j];
                 }
             }
         }
@@ -365,7 +390,7 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     //---
 
     // Wyznaczenie parametru lowerBound - suma minimów wierszy + suma minimów kolumn.
-    auto lowerBound = std::accumulate(std::begin(minimumValueInRow), std::end(minimumValueInRow), 0,
+    lowerBound = std::accumulate(std::begin(minimumValueInRow), std::end(minimumValueInRow), 0,
                                       [](int value, const std::map<int, int>::value_type &p) {
                                           return value + p.second;
                                       }
@@ -382,36 +407,36 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
 
     // Wyznaczenie minimalnych wartości dla każdego wiersza i kolumny (0 uznane za minimum jeżeli wystąpi 2 razy).
     int amountOfZeros;
-    for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
         amountOfZeros = 0;
-        minimumValueInRow[i] = INT_MAX;
-        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
-            if (arrayOfBranchAndBoundMatrixOfCities[i][j] == 0)
+        minimumValueInRow[indexesOfRowsInSubset[i]] = INT_MAX;
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
+            if (activeRoute[i][j] == 0)
                 amountOfZeros++;
             if (amountOfZeros >= 2) {
-                minimumValueInRow[i] = 0;
+                minimumValueInRow[indexesOfRowsInSubset[i]] = 0;
                 break;
             }
-            if ((arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInRow[i]) &&
-                (arrayOfBranchAndBoundMatrixOfCities[i][j] != 0))
-                minimumValueInRow[i] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+            if ((activeRoute[i][j] < minimumValueInRow[i]) &&
+                (activeRoute[i][j] != 0))
+                minimumValueInRow[indexesOfRowsInSubset[i]] = activeRoute[i][j];
 
         }
     }
 
-    for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
+    for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
         amountOfZeros = 0;
-        minimumValueInColumn[j] = INT_MAX;
-        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
-            if (arrayOfBranchAndBoundMatrixOfCities[i][j] == 0)
+        minimumValueInColumn[indexesOfColumnsInSubset[j]] = INT_MAX;
+        for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+            if (activeRoute[i][j] == 0)
                 amountOfZeros++;
             if (amountOfZeros == 2) {
-                minimumValueInColumn[j] = 0;
+                minimumValueInColumn[indexesOfColumnsInSubset[j]] = 0;
                 break;
             }
-            if ((arrayOfBranchAndBoundMatrixOfCities[i][j] < minimumValueInColumn[j]) &&
-                (arrayOfBranchAndBoundMatrixOfCities[i][j] != 0))
-                minimumValueInColumn[j] = arrayOfBranchAndBoundMatrixOfCities[i][j];
+            if ((activeRoute[i][j] < minimumValueInColumn[j]) &&
+                (activeRoute[i][j] != 0))
+                minimumValueInColumn[indexesOfColumnsInSubset[j]] = activeRoute[i][j];
         }
     }
 
@@ -450,60 +475,109 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     int indexOfDeletedSection;
 
     if (maximumValueFromMinimumsOfRows > maximumValueFromMinimumsOfColumns) {
-        for (auto j = 0; j < amountOfCitiesInBranchAndBoundMatrix; j++) {
-            if (arrayOfBranchAndBoundMatrixOfCities[indexOfMaximumValueFromMinimumsOfRows][j] == 0) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset; j++) {
+            if (activeRoute[indexOfMaximumValueFromMinimumsOfRows][j] == 0) {
                 indexOfDeletedSection = j;
-                indexOfDeletedRow=indexOfMaximumValueFromMinimumsOfRows;
-                indexOfDeletedColumn=indexOfDeletedSection;
+                indexOfDeletedRow = indexOfMaximumValueFromMinimumsOfRows;
+                indexOfDeletedColumn = indexOfDeletedSection;
+                lowerBoundK2 = lowerBound + maximumValueFromMinimumsOfRows;
                 break;
             }
         }
-        arrayOfBranchAndBoundMatrixOfCities[indexOfDeletedSection][indexOfMaximumValueFromMinimumsOfRows] = INT_MAX;
+        activeRoute[indexOfDeletedSection][indexOfMaximumValueFromMinimumsOfRows] = INT_MAX;
     } else {
 
-        for (auto i = 0; i < amountOfCitiesInBranchAndBoundMatrix; i++) {
-            if (arrayOfBranchAndBoundMatrixOfCities[i][indexOfMaximumValueFromMinimumsOfColumns] == 0) {
+        for (auto i = 0; i < amountOfCitiesInActualSubset; i++) {
+            if (activeRoute[i][indexOfMaximumValueFromMinimumsOfColumns] == 0) {
                 indexOfDeletedSection = i;
-                indexOfDeletedRow=indexOfDeletedSection;
-                indexOfDeletedColumn=indexOfMaximumValueFromMinimumsOfRows;
+                indexOfDeletedRow = indexOfDeletedSection;
+                indexOfDeletedColumn = indexOfMaximumValueFromMinimumsOfColumns;
+                lowerBoundK2 = lowerBound + maximumValueFromMinimumsOfColumns;
                 break;
             }
         }
-        arrayOfBranchAndBoundMatrixOfCities[indexOfMaximumValueFromMinimumsOfColumns][indexOfDeletedSection] = INT_MAX;
+        activeRoute[indexOfMaximumValueFromMinimumsOfColumns][indexOfDeletedSection] = INT_MAX;
     }
 
+
+
+    //Usunięcie indeksów usuwanych wierszy i kolumn.
+    indexesOfRowsInSubset.erase(indexesOfRowsInSubset.begin() +
+                                FindSectionIndex(indexesOfRowsInSubset, amountOfCitiesInActualSubset,
+                                                 indexOfDeletedRow));
+    indexesOfColumnsInSubset.erase(indexesOfColumnsInSubset.begin() +
+                                   FindSectionIndex(indexesOfColumnsInSubset, amountOfCitiesInActualSubset,
+                                                    indexOfDeletedColumn));
+
     //---
-    std::cout << "Odległości pomiędzy miastami (macierz wag) z dodaną blokadą: " << std::endl;
+    std::cout << std::endl;
+    std::cout << "Wypisanie aktualnych wierszy: " << std::endl;
+    for (std::vector<int>::const_iterator i = indexesOfRowsInSubset.begin(); i != indexesOfRowsInSubset.end(); i++) {
+        std::cout << *i << std::endl;
+    }
+    std::cout << std::endl;
+    std::cout << "Wypisanie aktualnych kolumn: " << std::endl;
+    for (std::vector<int>::const_iterator i = indexesOfColumnsInSubset.begin();
+         i != indexesOfColumnsInSubset.end(); i++) {
+        std::cout << *i << std::endl;
+    }
+    std::cout << std::endl;
+    //---
+
+    long long int **K1 = new long long int *[amountOfCitiesInActualSubset - 1];
+    for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+        K1[i] = new long long int[amountOfCitiesInActualSubset - 1];
+    }
+
+    //Redukcja macierzy K1 - usunięcie wiersza.
+    for (auto i = 0; i < amountOfCitiesInActualSubset; i++)
+        if (i != indexOfDeletedRow) {
+            for (auto j = 0; j < amountOfCitiesInActualSubset; j++)
+                if (j != indexOfDeletedColumn) {
+                    if (i < indexOfDeletedRow && j < indexOfDeletedColumn)
+                        K1[i][j] = activeRoute[i][j];
+                    else if (i < indexOfDeletedRow && j > indexOfDeletedColumn)
+                        K1[i][j - 1] = activeRoute[i][j];
+                    else if (i > indexOfDeletedRow && j < indexOfDeletedColumn)
+                        K1[i - 1][j] = activeRoute[i][j];
+                    else
+                        K1[i - 1][j - 1] = activeRoute[i][j];
+                }
+        }
+
+    //---
+    std::cout << "Odległości pomiędzy miastami (zredukowana macierz wag K1) z dodaną blokadą: " << std::endl;
     std::cout << "\t";
-    for (auto i = 0; i < amountOfCities; i++) {
-        std::cout << i << ".\t";
+    for (std::vector<int>::const_iterator i = indexesOfColumnsInSubset.begin();
+         i != indexesOfColumnsInSubset.end(); i++) {
+        std::cout << *i << ".\t";
     }
     std::cout << "\v" << std::endl;
-    for (auto i = 0; i < amountOfCities; i++) {
-        for (auto j = 0; j < amountOfCities; j++) {
+    for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++) {
             if (j == 0) {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t\b" << "\e[1mINF\e[0m";
+                if (K1[i][j] < 0) {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << K1[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
-                        std::cout << i << ".\t" << "\e[1mINF\e[0m";
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << i << ".\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << K1[i][j];
                 }
             } else {
-                if (arrayOfBranchAndBoundMatrixOfCities[i][j] < 0) {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                if (K1[i][j] < 0) {
+                    if (K1[i][j] == INT_MAX)
                         std::cout << "\t\b" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t\b" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t\b" << K1[i][j];
                 } else {
-                    if (arrayOfBranchAndBoundMatrixOfCities[i][j] == INT_MAX)
+                    if (K1[i][j] == INT_MAX)
                         std::cout << "\t" << "\e[1mINF\e[0m";
                     else
-                        std::cout << "\t" << arrayOfBranchAndBoundMatrixOfCities[i][j];
+                        std::cout << "\t" << K1[i][j];
                 }
             }
         }
@@ -511,7 +585,172 @@ void TravellingSalesmanProblem::BranchAndBoundAlgorithm() {
     }
     //---
 
-    edgesOfSolution.insert(indexOfDeletedRow, indexOfDeletedColumn);
+    // Wyznaczenie minimalnych wartości dla każdego wiersza K1.
+    minimumValueInRow.clear();
+    for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+        minimumValueInRow[indexesOfRowsInSubset[i]] = INT_MAX;
+        for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++) {
+            if (K1[i][j] < minimumValueInRow[indexesOfRowsInSubset[i]]) {
+                minimumValueInRow[indexesOfRowsInSubset[i]] = K1[i][j];
+            }
+        }
+    }
+
+    //---
+    std::cout << "Minimalne wartości w wierszach K1: " << std::endl;
+    for (std::map<int, long long int>::iterator map_iterator = minimumValueInRow.begin();
+         map_iterator != minimumValueInRow.end(); ++map_iterator) {
+        std::cout << map_iterator->first << " => " << map_iterator->second << std::endl;
+    }
+    std::cout << std::endl;
+    //---
+
+    // Odjęcie minimalnych wartości wiersza od każdego elementu wiersza.
+    for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++)
+            if (K1[i][j] != INT_MAX)
+                K1[i][j] -= minimumValueInRow[i];
+    }
+
+    //---
+    std::cout
+            << "Odległości pomiędzy miastami (zredukowana macierz wag K1) z dodaną blokadą po 1. etapie standaryzacji: "
+            << std::endl;
+    std::cout << "\t";
+    for (std::vector<int>::const_iterator i = indexesOfColumnsInSubset.begin();
+         i != indexesOfColumnsInSubset.end(); i++) {
+        std::cout << *i << ".\t";
+    }
+    std::cout << "\v" << std::endl;
+    for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++) {
+            if (j == 0) {
+                if (K1[i][j] < 0) {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << K1[i][j];
+                } else {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << K1[i][j];
+                }
+            } else {
+                if (K1[i][j] < 0) {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << "\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t\b" << K1[i][j];
+                } else {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << "\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t" << K1[i][j];
+                }
+            }
+        }
+        std::cout << "\v" << std::endl;
+    }
+    //---
+
+    // Wyznaczenie minimalnych wartości dla każdej kolumny K1.
+    minimumValueInColumn.clear();
+    for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++) {
+        minimumValueInColumn[indexesOfColumnsInSubset[j]] = INT_MAX;
+        for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+            if (K1[i][j] < minimumValueInColumn[indexesOfColumnsInSubset[j]]) {
+                minimumValueInColumn[indexesOfColumnsInSubset[j]] = K1[i][j];
+            }
+        }
+    }
+
+    //---
+    std::cout << std::endl;
+    std::cout << "Minimalne wartości w kolumnach K1: " << std::endl;
+    for (std::map<int, long long int>::iterator map_iterator = minimumValueInColumn.begin();
+         map_iterator != minimumValueInColumn.end(); ++map_iterator) {
+        std::cout << map_iterator->first << " => " << map_iterator->second << std::endl;
+    }
+    std::cout << std::endl;
+    //---
+
+    // Odjęcie minimalnych wartości kolumny od każdego elementu kolumny.
+    for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++) {
+        for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++)
+            if (K1[i][j] != INT_MAX)
+                K1[i][j] -= minimumValueInColumn[j];
+
+    }
+
+    //---
+    std::cout
+            << "Odległości pomiędzy miastami (zredukowana macierz wag K1) z dodaną blokadą po 2. etapie standaryzacji: "
+            << std::endl;
+    std::cout << "\t";
+    for (std::vector<int>::const_iterator i = indexesOfColumnsInSubset.begin();
+         i != indexesOfColumnsInSubset.end(); i++) {
+        std::cout << *i << ".\t";
+    }
+    std::cout << "\v" << std::endl;
+    for (auto i = 0; i < amountOfCitiesInActualSubset - 1; i++) {
+        for (auto j = 0; j < amountOfCitiesInActualSubset - 1; j++) {
+            if (j == 0) {
+                if (K1[i][j] < 0) {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << indexesOfRowsInSubset[i] << ".\t\b" << K1[i][j];
+                } else {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << indexesOfRowsInSubset[i] << ".\t" << K1[i][j];
+                }
+            } else {
+                if (K1[i][j] < 0) {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << "\t\b" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t\b" << K1[i][j];
+                } else {
+                    if (K1[i][j] == INT_MAX)
+                        std::cout << "\t" << "\e[1mINF\e[0m";
+                    else
+                        std::cout << "\t" << K1[i][j];
+                }
+            }
+        }
+        std::cout << "\v" << std::endl;
+    }
+    //---
+
+    // Wyznaczenie parametru lowerBound dla K1 - poprzedni lowerBound + suma minimów wierszy + suma minimów kolumn.
+    lowerBoundK1 = lowerBound + std::accumulate(std::begin(minimumValueInRow), std::end(minimumValueInRow), 0,
+                                                [](int value, const std::map<int, int>::value_type &p) {
+                                                    return value + p.second;
+                                                }
+    ) + std::accumulate(std::begin(minimumValueInColumn), std::end(minimumValueInColumn), 0,
+                        [](int value, const std::map<int, int>::value_type &p) {
+                            return value + p.second;
+                        }
+    );
+
+    //---
+    std::cout << "Lower Bound K1: " << lowerBoundK1 << ", Lower Bound K2: " << lowerBoundK2 << "." << std::endl
+              << std::endl;
+    //---
+
+    if (lowerBoundK1>lowerBoundK2)
+    {
+
+    }
+    else
+    {
+
+    }
+
+    //edgesOfSolution.insert(indexOfDeletedRow, indexOfDeletedColumn);
 }
 
 
